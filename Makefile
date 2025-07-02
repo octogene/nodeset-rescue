@@ -1,4 +1,6 @@
-VERSION = v1.3.0
+VERSION = v1.0.0
+BUILD_TAGS ?= ns
+IMAGE_NAME ?= nsrescuenode/rescue-proxy
 
 SOURCEDIR := .
 SOURCES := $(shell find $(SOURCEDIR) -name '*.go')
@@ -8,7 +10,7 @@ PROTO_DEPS := $(wildcard $(PROTO_IN)/*.proto)
 
 .PHONY: all
 all: protos
-	go build .
+	go build $(if $(BUILD_TAGS),-tags=$(BUILD_TAGS)) .
 
 .PHONY: protos
 protos: $(PROTO_DEPS)
@@ -29,14 +31,14 @@ clean:
 
 .PHONY: docker
 docker: all
-	docker build . -t rocketrescuenode/rescue-proxy:$(VERSION)
-	docker tag rocketrescuenode/rescue-proxy:$(VERSION) rocketrescuenode/rescue-proxy:latest
-	docker tag rocketrescuenode/rescue-proxy:$(VERSION) rescue-proxy:latest
+	docker build . -t $(IMAGE_NAME):$(VERSION)
+	docker tag $(IMAGE_NAME):$(VERSION) $(IMAGE_NAME):latest
+	docker tag $(IMAGE_NAME):$(VERSION) rescue-proxy:latest
 
 .PHONY: publish
 publish:
-	docker push rocketrescuenode/rescue-proxy:latest
-	docker push rocketrescuenode/rescue-proxy:$(VERSION)
+	docker push $(IMAGE_NAME):latest
+	docker push $(IMAGE_NAME):$(VERSION)
 
 .DELETE_ON_ERROR: cov.out
 cov.out: $(SOURCES)
