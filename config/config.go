@@ -1,3 +1,5 @@
+//go:build !ns
+
 package config
 
 import (

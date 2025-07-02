@@ -1,3 +1,5 @@
+//go:build !ns
+
 package main
 
 import (
