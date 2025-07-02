@@ -1,4 +1,4 @@
-[![Rescue Node Proxy](https://github.com/Rocket-Rescue-Node/rescue-proxy/actions/workflows/tests.yml/badge.svg)](https://github.com/Rocket-Rescue-Node/rescue-proxy/actions/workflows/tests.yml) [![golangci-lint](https://github.com/Rocket-Rescue-Node/rescue-proxy/actions/workflows/golangci-lint.yml/badge.svg)](https://github.com/Rocket-Rescue-Node/rescue-proxy/actions/workflows/golangci-lint.yml) [![GoReportCard](https://goreportcard.com/badge/github.com/Rocket-Rescue-Node/rescue-proxy)](https://goreportcard.com/report/github.com/Rocket-Rescue-Node/rescue-proxy)
+[![Nodeset Rescue Node Proxy](https://github.com/Rocket-Rescue-Node/rescue-proxy/actions/workflows/tests.yml/badge.svg)](https://github.com/Rocket-Rescue-Node/rescue-proxy/actions/workflows/tests.yml) [![golangci-lint](https://github.com/Rocket-Rescue-Node/rescue-proxy/actions/workflows/golangci-lint.yml/badge.svg)](https://github.com/Rocket-Rescue-Node/rescue-proxy/actions/workflows/golangci-lint.yml) [![GoReportCard](https://goreportcard.com/badge/github.com/Rocket-Rescue-Node/rescue-proxy)](https://goreportcard.com/report/github.com/Rocket-Rescue-Node/rescue-proxy)
 
 # Rescue-Proxy
 
@@ -46,6 +46,10 @@ Usage of ./rescue-proxy:
         Can be passed multiple times. Credentials are considered valid if they were generated with any supplied secret.
   -rocketstorage-addr string
         Address of the Rocket Storage contract. Defaults to mainnet (default "0x1d8f8f00cfa6758d7bE78336684788Fb0ee0Fa46")
+  -swise-vaults-registry-addr string
+        Address of the Stakewise Vaults Registry contract. Defaults to mainnet. Pass empty string to disable.
+  -fee-recipient string
+        Required fee recipient for validators
 ```
 
   * The `-grpc` flags should only be used with a Prysm beacon node.
