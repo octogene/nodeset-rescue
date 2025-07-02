@@ -1,6 +1,11 @@
 VERSION = v1.0.0
 BUILD_TAGS ?= ns
 IMAGE_NAME ?= nsrescuenode/rescue-proxy
+BUILD_TAGS_ARG = $(if $(BUILD_TAGS),-tags=$(BUILD_TAGS))
+
+ifeq ($(BUILD_TAGS), ns)
+	export GOEXPERIMENT=synctest
+endif
 
 SOURCEDIR := .
 SOURCES := $(shell find $(SOURCEDIR) -name '*.go')
@@ -10,7 +15,7 @@ PROTO_DEPS := $(wildcard $(PROTO_IN)/*.proto)
 
 .PHONY: all
 all: protos
-	go build $(if $(BUILD_TAGS),-tags=$(BUILD_TAGS)) .
+	go build $(BUILD_TAGS_ARG) .
 
 .PHONY: protos
 protos: $(PROTO_DEPS)
@@ -31,7 +36,7 @@ clean:
 
 .PHONY: docker
 docker: all
-	docker build . -t $(IMAGE_NAME):$(VERSION)
+	docker build $(BUILD_TAGS_ARG) . -t $(IMAGE_NAME):$(VERSION)
 	docker tag $(IMAGE_NAME):$(VERSION) $(IMAGE_NAME):latest
 	docker tag $(IMAGE_NAME):$(VERSION) rescue-proxy:latest
 
@@ -42,7 +47,7 @@ publish:
 
 .DELETE_ON_ERROR: cov.out
 cov.out: $(SOURCES)
-	go test -coverprofile=cov.out ./...
+	go test -coverprofile=cov.out $(BUILD_TAGS_ARG) ./...
 
 .PHONY: testcov
 testcov: cov.out
