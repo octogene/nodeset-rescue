@@ -32,7 +32,7 @@ func NewMockConsensusLayer(numValidators int, seed string) *MockConsensusLayer {
 	out.Indices = make(map[rptypes.ValidatorPubkey]string)
 
 	for i := 0; i < numValidators; i++ {
-		pubkey := randPubkey(gen)
+		pubkey := RandPubkey(gen)
 		idx := 100 + i
 		balance := phase0.Gwei(gen.Int63())
 		out.validators[fmt.Sprint(idx)] = &apiv1.Validator{
@@ -86,7 +86,7 @@ func (m *MockConsensusLayer) AddExecutionValidators(e *MockExecutionLayer, seed 
 		withdrawalCreds := [32]byte{}
 		withdrawalCreds[0] = 0x01
 		copy(withdrawalCreds[12:], vault[:])
-		pubkey := randPubkey(gen)
+		pubkey := RandPubkey(gen)
 		m.validators[fmt.Sprint(idx)] = &apiv1.Validator{
 			Index:   phase0.ValidatorIndex(idx),
 			Balance: balance,

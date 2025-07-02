@@ -8,7 +8,7 @@ import (
 	rptypes "github.com/rocket-pool/rocketpool-go/types"
 )
 
-func randPubkey(r *rand.Rand) rptypes.ValidatorPubkey {
+func RandPubkey(r *rand.Rand) rptypes.ValidatorPubkey {
 	out := make([]byte, rptypes.ValidatorPubkeyLength)
 	r.Read(out)
 	return rptypes.BytesToValidatorPubkey(out)

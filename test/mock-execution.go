@@ -55,7 +55,7 @@ func NewMockExecutionLayer(numNodes int, numOdaoNodes int, numValidators int, nu
 	for i := 0; i < numValidators; i++ {
 		// Pick a random node
 		info := out.nodes[gen.Int31n(int32(numNodes))]
-		out.VMap[randPubkey(gen)] = info
+		out.VMap[RandPubkey(gen)] = info
 	}
 
 	out.SWVaults = make(map[common.Address]common.Address, numSWValidators)
