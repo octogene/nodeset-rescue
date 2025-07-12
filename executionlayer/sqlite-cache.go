@@ -194,6 +194,10 @@ func (s *SqliteCache) init() error {
 		return err
 	}
 
+	// Set max connection to 1 to avoid locked db error
+	// TODO: Investigate
+	s.db.SetMaxOpenConns(1)
+
 	// Check if the path exists
 	if _, err = os.Stat(s.Path); os.IsNotExist(err) {
 		// Create the path
