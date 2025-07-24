@@ -194,9 +194,11 @@ func (s *SqliteCache) init() error {
 		return err
 	}
 
-	// Set max connection to 1 to avoid locked db error
+	// Set max connection to 2 to avoid locked db error
+	// Setting it to 1 seems to create an issue when the db needs to be loaded as the program is stuck
+	// Some component during init phase may be waiting for access to the database.
 	// TODO: Investigate
-	s.db.SetMaxOpenConns(1)
+	s.db.SetMaxOpenConns(2)
 
 	// Check if the path exists
 	if _, err = os.Stat(s.Path); os.IsNotExist(err) {

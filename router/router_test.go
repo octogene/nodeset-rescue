@@ -422,7 +422,7 @@ func TestRouterPBPSoloUnseen(t *testing.T) {
 			[{
 				"validator_index": "%s",
 				"fee_recipient": "%s"
-			}]`, "1010101", "0xabcf8e0d4e9587369b2301d0790347320302cc09"),
+			}]`, "1010101", ""),
 		),
 	)
 	if err != nil {

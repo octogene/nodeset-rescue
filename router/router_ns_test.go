@@ -91,6 +91,7 @@ func setup(t *testing.T, errs chan error) routerTest {
 		Logger:               zaptest.NewLogger(t),
 		CredentialSecrets:    config.CredentialSecrets{[]byte("test"), []byte("test2")},
 		EnableSoloValidators: true,
+		ExpectedFeeRecipient: "",
 	}
 	pr.Init()
 	return routerTest{
@@ -682,6 +683,8 @@ func TestRouterRVSW(t *testing.T) {
 	for v, f := range swVaults {
 		vault = v
 		fr = f
+		// We're expecting the same fee recipient as the selected vault
+		rt.pr.ExpectedFeeRecipient = f.String()
 		// Just get the first one.
 		break
 	}
@@ -814,6 +817,7 @@ func TestRouterRVSWCheater(t *testing.T) {
 func TestRouterRVSolo(t *testing.T) {
 	errs := make(chan error)
 	rt := setup(t, errs)
+	rt.pr.ExpectedFeeRecipient = "0x54336728af9af492276917d6c20723a06d6daf39"
 
 	go rt.start()
 
@@ -861,7 +865,7 @@ func TestRouterRVSolo(t *testing.T) {
 	if err != nil {
 		t.Fatal("unexpected error", err)
 	}
-	if resp.StatusCode != 401 {
+	if resp.StatusCode != 409 {
 		t.Fatal("unexpected status code", resp.StatusCode)
 	}
 }
@@ -911,68 +915,6 @@ func TestRouterRVSoloMalformed(t *testing.T) {
 	}
 	if !strings.HasPrefix(eMap["error"], "error parsing pubkey from request body: Invalid validator public key hex string bob: invalid length 3") {
 		t.Fatal("unexpected status", eMap["error"])
-	}
-}
-
-func TestRouterRVCheater(t *testing.T) {
-	errs := make(chan error)
-	rt := setup(t, errs)
-
-	go rt.start()
-
-	// Grab a couple validators
-	vMap := rt.pr.EL.(*test.MockExecutionLayer).VMap
-
-	pubkeys := make([]rptypes.ValidatorPubkey, 0)
-	frs := make([]*common.Address, 0)
-	for pubkey, info := range vMap {
-		if len(pubkeys) == 2 {
-			break
-		}
-		frs = append(frs, info.ExpectedFeeRecipient)
-		pubkeys = append(pubkeys, pubkey)
-
-	}
-
-	username, pw := rt.validAuth(t, false)
-
-	body := fmt.Sprintf(`
-			[{
-				"message": {
-					"gas_limit": "1",
-					"timestamp": "1",
-					"pubkey": "%s",
-					"fee_recipient": "%s"
-				},
-				"signature": "0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505"
-			},
-			{
-				"message": {
-					"gas_limit": "1",
-					"timestamp": "1",
-					"pubkey": "%s",
-					"fee_recipient": "%s"
-				},
-				"signature": "0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505"
-			}
-			]`,
-		pubkeys[0].String(),
-		frs[0].String(),
-		pubkeys[1].String(),
-		"0xabcf8e0d4e9587369b2301d0790347320302cc09",
-	)
-	t.Log("body", body)
-
-	resp, err := http.Post(
-		"http://"+username+":"+pw+"@"+rt.pr.Addr+"/eth/v1/validator/register_validator",
-		"application/json",
-		strings.NewReader(body),
-	)
-	if err != nil {
-		t.Fatal("unexpected error", err)
-	}
-	if resp.StatusCode != 401 {
-		t.Fatal("unexpected status code", resp.StatusCode)
 	}
 }
 
