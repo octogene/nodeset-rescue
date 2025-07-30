@@ -16,6 +16,7 @@ import (
 type SqliteCache struct {
 	Path                string
 	db                  *sql.DB
+	readDb              *sql.DB
 	getMinipoolStmt     *sql.Stmt
 	getNodeStmt         *sql.Stmt
 	getHighestBlockStmt *sql.Stmt
@@ -38,15 +39,15 @@ const snapshotFileName = "rescue-proxy-cache.sql"
 func (s *SqliteCache) prepareStatements() error {
 	var err error
 
-	s.getMinipoolStmt, err = s.db.Prepare("SELECT node_address FROM minipools WHERE pubkey = ?;")
+	s.getMinipoolStmt, err = s.readDb.Prepare("SELECT node_address FROM minipools WHERE pubkey = ?;")
 	if err != nil {
 		return err
 	}
-	s.getNodeStmt, err = s.db.Prepare("SELECT smoothing_pool_status, fee_distributor FROM nodes WHERE address = ?;")
+	s.getNodeStmt, err = s.readDb.Prepare("SELECT smoothing_pool_status, fee_distributor FROM nodes WHERE address = ?;")
 	if err != nil {
 		return err
 	}
-	s.getHighestBlockStmt, err = s.db.Prepare("SELECT value FROM highest_block WHERE id = 0;")
+	s.getHighestBlockStmt, err = s.readDb.Prepare("SELECT value FROM highest_block WHERE id = 0;")
 	if err != nil {
 		return err
 	}
@@ -64,7 +65,7 @@ func (s *SqliteCache) prepareStatements() error {
 		return err
 	}
 
-	s.forEachNodeStmt, err = s.db.Prepare("SELECT address FROM nodes;")
+	s.forEachNodeStmt, err = s.readDb.Prepare("SELECT address FROM nodes;")
 	if err != nil {
 		return err
 	}
@@ -79,7 +80,7 @@ func (s *SqliteCache) prepareStatements() error {
 		return err
 	}
 
-	s.forEachOdaoNodeStmt, err = s.db.Prepare("SELECT address FROM odao_nodes;")
+	s.forEachOdaoNodeStmt, err = s.readDb.Prepare("SELECT address FROM odao_nodes;")
 	if err != nil {
 		return err
 	}
@@ -148,6 +149,11 @@ func cloneSqlDB(dst, src *sql.DB) error {
 		return err
 	}
 
+	defer func() {
+		_ = srcConn.Close()
+		_ = dstConn.Close()
+	}()
+
 	err = dstConn.Raw(func(dstDConn any) error {
 		dstSQLiteConn, ok := dstDConn.(*driver.SQLiteConn)
 		if !ok {
@@ -189,16 +195,19 @@ func (s *SqliteCache) init() error {
 	// Set highestBlock to 0. We can load it from the snapshot later
 	s.highestBlock = big.NewInt(0)
 
-	s.db, err = sql.Open("sqlite3", "file::memory:?cache=shared")
+	s.db, err = sql.Open("sqlite3", "file::memory:?cache=shared&mode=rw&_txlock=immediate")
 	if err != nil {
 		return err
 	}
 
-	// Set max connection to 2 to avoid locked db error
-	// Setting it to 1 seems to create an issue when the db needs to be loaded as the program is stuck
-	// Some component during init phase may be waiting for access to the database.
-	// TODO: Investigate
-	s.db.SetMaxOpenConns(2)
+	s.readDb, err = sql.Open("sqlite3", "file::memory:?cache=shared&mode=ro")
+	if err != nil {
+		return err
+	}
+
+	// Forcing serialized access for writes
+	// Check : https://github.com/mattn/go-sqlite3/issues/1179#issuecomment-1638083995
+	s.db.SetMaxOpenConns(1)
 
 	// Check if the path exists
 	if _, err = os.Stat(s.Path); os.IsNotExist(err) {
@@ -251,8 +260,7 @@ cont:
 	// Finally, grab the highest block from the db
 	// If there was no snapshot, this will not return anything,
 	// and the user will know they need to warm up the cache
-
-	tx, err := s.db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelReadCommitted})
+	tx, err := s.readDb.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return err
 	}
@@ -315,7 +323,7 @@ func (s *SqliteCache) serialize() error {
 func (s *SqliteCache) getMinipoolNode(pubkey rptypes.ValidatorPubkey) (common.Address, error) {
 	var addr []byte
 
-	tx, err := s.db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelReadCommitted})
+	tx, err := s.readDb.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -365,7 +373,7 @@ func (s *SqliteCache) getNodeInfo(nodeAddr common.Address) (*nodeInfo, error) {
 	var dbSPStatus int
 	var dbFeeDistributor []byte
 
-	tx, err := s.db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelReadCommitted})
+	tx, err := s.readDb.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return nil, err
 	}
@@ -422,7 +430,7 @@ func (s *SqliteCache) addNodeInfo(nodeAddr common.Address, node *nodeInfo) error
 func (s *SqliteCache) forEachNode(closure ForEachNodeClosure) error {
 	var address []byte
 
-	tx, err := s.db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelReadCommitted})
+	tx, err := s.readDb.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return err
 	}
@@ -482,7 +490,7 @@ func (s *SqliteCache) removeOdaoNode(nodeAddr common.Address) error {
 func (s *SqliteCache) forEachOdaoNode(closure ForEachNodeClosure) error {
 	var address []byte
 
-	tx, err := s.db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelReadCommitted})
+	tx, err := s.readDb.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return err
 	}
@@ -519,7 +527,6 @@ func (s *SqliteCache) setHighestBlock(block *big.Int) {
 }
 
 func (s *SqliteCache) getHighestBlock() *big.Int {
-
 	return s.highestBlock
 }
 

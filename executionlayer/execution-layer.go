@@ -656,6 +656,7 @@ func (e *CachingExecutionLayer) Init() error {
 		if err != nil {
 			return err
 		}
+		e.Logger.Debug("Loaded minipools for node", zap.String("node", addr.String()), zap.Int("count", len(minipoolAddresses)))
 	}
 
 	// Get all odao nodes at the given block
